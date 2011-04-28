@@ -85,7 +85,7 @@ public class MainGUI extends JFrame implements ActionListener {
     private JComboBox tileSourceSelector = null;
 
     public MainGUI() {
-        super("iPhone Stalker");
+        super("iPhoneStalker");
     }
 
     public boolean initialize() {
@@ -113,8 +113,8 @@ public class MainGUI extends JFrame implements ActionListener {
             dataPath = System.getProperty("user.home") + ""
                     + "/Library/Application Support/" + FOLDER_PATH;
         } else {
-            logger.log(Level.SEVERE, "{0} is not supported! Exiting.", systemOs);
-            System.exit(0);
+            logger.log(Level.INFO, "{0} is not supported! Please manually select"
+                    + " a backup folder.", systemOs);
         }
 
         if (laf != null) {
