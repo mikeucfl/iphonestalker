@@ -1,0 +1,17 @@
+
+4/29/2011
+-----------------------------------------------------------------------------
+Modifications
+- Removed most JOptionPane messages and added a status bar to the GUI.
+Clicking this status bar will open the full log.
+- Points are now color coded to their confidence level. A confidence of 70 (I
+assume is most confident?) is a green icon, whereas a confidence of 1 should
+show a yellow icon.
+
+Defects Fixed
+- Defect 1: Floating off the west coast of Africa
+- Defect 2: Fails to load data for Verizon iPhones
+
+4/27/2011
+----------------------------------------------------------------------------
+- Initial Release

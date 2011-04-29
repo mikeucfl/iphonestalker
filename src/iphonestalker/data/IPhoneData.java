@@ -58,15 +58,19 @@ public class IPhoneData {
         iPhoneLocation.longitude = longitude;
         iPhoneLocation.horizontalAccuracy = horizontalAccuracy;
         iPhoneLocation.confidence = confidence;
+        iPhoneLocation.hitCount = 1;
 
         // Override exact locations with better confidences
         boolean isUpdate = false;
         ArrayList<IPhoneLocation> locations = locationMap.get(day);
+        
         if (locations != null) {
             for (IPhoneLocation location : locations) {
                 if (location.fulldate.equals(fulldate)) {
                     if (confidence > location.confidence) {
-                        location = iPhoneLocation;
+                        location.confidence = iPhoneLocation.confidence;
+                        location.latitude = iPhoneLocation.latitude;
+                        location.longitude = iPhoneLocation.longitude;
                     }
                     isUpdate = true;
                 }
@@ -223,7 +227,7 @@ public class IPhoneData {
                     } else {
                         style = "routePoint";
                     }
-                    //TODO whats rong with endPoint not showing the square for stop?
+                    //TODO endPoint is not showing a square
                     IPhoneLocation location = locations.get(i);
                     
                     bufferedWriter.write("  <Placemark>\n");
@@ -306,7 +310,8 @@ public class IPhoneData {
         public double longitude = -1.0;
         public double horizontalAccuracy = -1.0;
         public int confidence = -1;
-
+        public int hitCount = 0;
+        
         public String getFullDate() {
             return fullDateFormat.format(fulldate);
         }

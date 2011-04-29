@@ -21,6 +21,8 @@ import java.awt.Insets;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.awt.event.KeyEvent;
+import java.awt.event.MouseEvent;
+import java.awt.event.MouseListener;
 import java.io.File;
 import java.net.URL;
 import java.util.ArrayList;
@@ -41,6 +43,8 @@ import javax.swing.JPanel;
 import javax.swing.JScrollPane;
 import javax.swing.JSplitPane;
 import javax.swing.JTable;
+import javax.swing.JTextArea;
+import javax.swing.JTextField;
 import javax.swing.JToolBar;
 import javax.swing.KeyStroke;
 import javax.swing.ListSelectionModel;
@@ -52,6 +56,7 @@ import javax.swing.event.ListSelectionEvent;
 import javax.swing.event.ListSelectionListener;
 import javax.swing.table.TableCellRenderer;
 import javax.swing.table.TableColumn;
+import javax.swing.table.TableModel;
 import javax.swing.table.TableRowSorter;
 import org.openstreetmap.gui.jmapviewer.interfaces.TileSource;
 import org.openstreetmap.gui.jmapviewer.tilesources.BingAerialTileSource;
@@ -73,23 +78,25 @@ public class MainGUI extends JFrame implements ActionListener {
     private static final String FILE_SEPARATOR =
             System.getProperty("file.separator");
     private static final String FOLDER_PATH = "MobileSync" + FILE_SEPARATOR
-                                            + "Backup" + FILE_SEPARATOR;
+            + "Backup" + FILE_SEPARATOR;
     private boolean initialized = false;
     private JMenuBar menuBar = null;
     private TrackerTableModel tableModel = null;
+    private TrackerTableModel sorterModel = null;
     private JComboBox phoneSelector = null;
     private JTable table = null;
     private BackupReader backupReader = null;
     private InfoReader infoReader = null;
     private MyJMapViewer mapViewer = null;
     private JComboBox tileSourceSelector = null;
+    private JTextField statusBar = null;
+    private String statusLog = "";
 
     public MainGUI() {
         super("iPhoneStalker");
     }
 
     public boolean initialize() {
-
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 
         // Create and set up the content pane
@@ -105,11 +112,11 @@ public class MainGUI extends JFrame implements ActionListener {
         String dataPath = null;
         String laf = UIManager.getCrossPlatformLookAndFeelClassName();
         if (systemOs.startsWith("Windows")) {
-            dataPath = System.getenv("APPDATA") + FILE_SEPARATOR + 
-                    "Apple Computer" + FILE_SEPARATOR + FOLDER_PATH;
-            laf = "com.sun.java.swing.plaf.windows.WindowsLookAndFeel";
+            dataPath = System.getenv("APPDATA") + FILE_SEPARATOR
+                    + "Apple Computer" + FILE_SEPARATOR + FOLDER_PATH;
+            laf = UIManager.getSystemLookAndFeelClassName();
         } else if (systemOs.startsWith("Mac OS")) {
-            laf = "com.sun.java.swing.plaf.mac.MacLookAndFeel";
+            laf = UIManager.getSystemLookAndFeelClassName();
             dataPath = System.getProperty("user.home") + ""
                     + "/Library/Application Support/" + FOLDER_PATH;
         } else {
@@ -129,26 +136,16 @@ public class MainGUI extends JFrame implements ActionListener {
         final String dataPathFinal = dataPath;
         if (dataPathFinal != null) {
             // Get the list of backup directories
-            SwingUtilities.invokeLater(new Runnable() {
-
-                @Override
-                public void run() {
-                    JOptionPane.showMessageDialog(null,
-                            "Loading phones in '" + dataPathFinal + "'",
-                            "Loading", JOptionPane.INFORMATION_MESSAGE);
-                }
-            });
-
             SwingWorker worker = new SwingWorker<Void, Void>() {
 
                 @Override
                 protected Void doInBackground() throws Exception {
+                    addStatus("Loading phones in '" + dataPathFinal + "'");
                     File dir = new File(dataPathFinal);
 
                     String[] children = dir.list();
                     if (children == null) {
                         // Either dir does not exist or is not a directory
-
                     } else {
                         for (int i = 0; i < children.length; i++) {
                             // Get filename of file or directory
@@ -165,7 +162,7 @@ public class MainGUI extends JFrame implements ActionListener {
                     return null;
                 }
             };
-            
+
             worker.execute();
         }
 
@@ -252,6 +249,7 @@ public class MainGUI extends JFrame implements ActionListener {
         JPanel centerPane = new JPanel(new GridBagLayout());
         JPanel centerLeftPane = new JPanel(new GridBagLayout());
         JPanel centerRightPane = new JPanel(new GridBagLayout());
+        JPanel bottomPane = new JPanel(new GridBagLayout());
         GridBagConstraints c = new GridBagConstraints();
 
         c.gridx = 0;
@@ -262,7 +260,7 @@ public class MainGUI extends JFrame implements ActionListener {
         JToolBar toolBar = createToolBar();
         contentPane.add(toolBar, BorderLayout.NORTH);
 
-        // main content
+        // Add the phone selector pane
         c.gridx = 0;
         c.gridy = 0;
         c.fill = GridBagConstraints.BOTH;
@@ -272,6 +270,7 @@ public class MainGUI extends JFrame implements ActionListener {
         phoneSelector.addActionListener(this);
         centerLeftPane.add(phoneSelector, c);
 
+        // Create the table model
         tableModel = new TrackerTableModel();
         table = new JTable(tableModel) {
 
@@ -289,8 +288,26 @@ public class MainGUI extends JFrame implements ActionListener {
                 return component;
             }
         };
+        
+        // Create the table sorter
+        TableRowSorter<TrackerTableModel> sorter =
+                new TableRowSorter<TrackerTableModel>(tableModel);
+        
+        // Comparator for sorting the first "index" column
+        sorter.setComparator(0, new Comparator<Integer>() {
+            @Override
+            public int compare(Integer o1, Integer o2) {
+                return o1.compareTo(o2);
+            }
+        });
+        table.setRowSorter(sorter);
+        sorterModel = sorter.getModel();
+        
+        // Adjust the column of the table
         TableColumn col = table.getColumnModel().getColumn(0);
         col.setPreferredWidth(1); // squeezes the other columns
+        
+        // Set attributes for the table
         table.setSelectionBackground(new Color(255, 250, 205)); // light yellow
         table.setSelectionForeground(Color.BLACK);
         table.setSelectionMode(ListSelectionModel.MULTIPLE_INTERVAL_SELECTION);
@@ -300,11 +317,20 @@ public class MainGUI extends JFrame implements ActionListener {
             public void valueChanged(ListSelectionEvent e) {
                 if (!e.getValueIsAdjusting()) {
                     int[] selectedRows = table.getSelectedRows();
+                    int[] sortedRows = null;
+                    
+                    if (selectedRows != null) {
+                        sortedRows = new int[selectedRows.length];
+                        for (int i = 0; i < selectedRows.length;i++) {
+                            sortedRows[i] = table.convertRowIndexToModel(selectedRows[i]);
+                        }
+                    }
+                    
                     IPhoneData iPhoneData = (IPhoneData) phoneSelector.getSelectedItem();
 
                     ArrayList<MapRoute> mapRouteList = new ArrayList<MapRoute>();
-                    if (selectedRows != null) {
-                        for (int row : selectedRows) {
+                    if (sortedRows != null) {
+                        for (int row : sortedRows) {
 
                             String day = tableModel.getDay(row);
                             ArrayList<IPhoneLocation> iPhoneLocations =
@@ -317,19 +343,18 @@ public class MainGUI extends JFrame implements ActionListener {
                             for (int i = 0; i < iPhoneLocations.size(); i++) {
                                 IPhoneLocation iPhoneLocation = iPhoneLocations.get(i);
 
-                                MyCoordinate coordinate = new MyCoordinate(
-                                        iPhoneLocation.getFullDate() + " [route: "
-                                        + (i + 1) + "/" + iPhoneLocations.size()
+                                String label = iPhoneLocation.getFullDate() +
+                                        " [route: " + (i + 1) + "/" + iPhoneLocations.size()
                                         + ", confidence: " + iPhoneLocation.confidence
-                                        + "]",
-                                        iPhoneLocation.latitude,
-                                        iPhoneLocation.longitude);
+                                        + "]";
+                                MyCoordinate coordinate = 
+                                        new MyCoordinate(label,iPhoneLocation);
                                 mapCoordinateList.add(coordinate);
                             }
 
                             MyMapRoute mapRoute =
                                     new MyMapRoute(
-                                    Color.YELLOW,
+                                    null,
                                     Color.BLUE,
                                     mapCoordinateList);
                             mapRouteList.add(mapRoute);
@@ -344,17 +369,6 @@ public class MainGUI extends JFrame implements ActionListener {
                 }
             }
         });
-        TableRowSorter<TrackerTableModel> sorter =
-                new TableRowSorter<TrackerTableModel>(tableModel);
-
-        // Comparator for sorting the first "index" column
-        sorter.setComparator(0, new Comparator<Integer>() {
-
-            public int compare(Integer o1, Integer o2) {
-                return o1.compareTo(o2);
-            }
-        });
-        table.setRowSorter(sorter);
 
         c.gridx = 0;
         c.gridy = 1;
@@ -406,8 +420,49 @@ public class MainGUI extends JFrame implements ActionListener {
         c.weighty = 1.0;
         c.fill = GridBagConstraints.BOTH;
         centerPane.add(splitPane, c);
-
         contentPane.add(centerPane, BorderLayout.CENTER);
+
+        statusBar = new JTextField("");
+        statusBar.setEditable(false);
+        statusBar.addMouseListener(new MouseListener() {
+
+            @Override
+            public void mouseClicked(MouseEvent e) {
+            }
+
+            @Override
+            public void mousePressed(MouseEvent e) {
+            }
+
+            @Override
+            public void mouseReleased(MouseEvent e) {
+                JTextArea statusLogTextArea = new JTextArea(statusLog);
+                statusLogTextArea.setEditable(false);
+                JScrollPane scrollPane = new JScrollPane(statusLogTextArea);
+                
+                JOptionPane.showMessageDialog(null, scrollPane, 
+                        "Log", JOptionPane.INFORMATION_MESSAGE);
+            }
+
+            @Override
+            public void mouseEntered(MouseEvent e) {
+            }
+
+            @Override
+            public void mouseExited(MouseEvent e) {
+            }
+            
+        });
+        c.gridx = 0;
+        c.gridy = 1;
+        c.weightx = 1.0;
+        c.weighty = 1.0;
+        c.insets = new Insets(0, 0, 0, 0);
+        c.fill = GridBagConstraints.BOTH;
+        bottomPane.add(statusBar, c);
+        
+        contentPane.add(bottomPane, BorderLayout.SOUTH);
+
         return contentPane;
     }
 
@@ -424,22 +479,29 @@ public class MainGUI extends JFrame implements ActionListener {
             // Get the data from the file
             String errorReason = backupReader.processFolder(backupFolder, iPhoneData);
 
+            // Check for the override flag
+            if (errorReason != null && errorReason.startsWith("OVERRIDE")) {
+                errorReason = errorReason.replace("OVERRIDE", "");
+                alertInfo = true;
+            }
+            
             // Add to list
             if (errorReason != null && alertInfo) {
-                JOptionPane.showMessageDialog(this, errorReason, "Error parsing",
-                        JOptionPane.ERROR_MESSAGE);
+                addStatus("ERROR: " + errorReason);
             } else {
                 phoneSelector.addItem(iPhoneData);
-                if (alertInfo) {
-                    JOptionPane.showMessageDialog(this, "Loaded " + backupFolder,
-                        "Successful", JOptionPane.INFORMATION_MESSAGE);
-                }
+                File backupFolderFile = new File(backupFolder);
+                addStatus("Loaded '" + iPhoneData + "' [" + 
+                        backupFolderFile.getName() + "]");
             }
         } else if (alertInfo) {
-                JOptionPane.showMessageDialog(this, "Unable to load " + 
-                        infoFile.getAbsolutePath(),
-                        "Error parsing", JOptionPane.ERROR_MESSAGE);
+            addStatus("ERROR: Unable to load " + infoFile.getAbsolutePath());
         }
+    }
+
+    public void addStatus(String status) {
+        statusBar.setText(status);
+        statusLog += "\n" + status;
     }
 
     @Override
