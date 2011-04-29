@@ -73,7 +73,7 @@ public class MyMapRoute implements MapRoute {
      private void drawLine(Graphics g, Color color, int x0, int y0, int x1, int y1){
         Graphics2D g2 = (Graphics2D) g;
         g2.setColor(Color.BLACK);
-        g2.setStroke(new BasicStroke(5));
+        g2.setStroke(new BasicStroke(4));
         g2.drawLine(x0, y0, x1, y1);
         g2.setColor(color);
         g2.setStroke(new BasicStroke(3));
@@ -117,25 +117,34 @@ public class MyMapRoute implements MapRoute {
             // Now draw the points and info text
             for (MyCoordinate coordinate : coordinates) {
                 // Draw the point
-                int size_h = 7;
-                int size = size_h * 2;
+                int size = 14;
                 Point position = mapViewer.getMapPosition(coordinate.getLat(),
                         coordinate.getLon(), true);
                 if (position != null) {
-                    g.setColor(locationColor);
-                    //g2.draw(null)
-                    g.fillOval(position.x - size_h, position.y - size_h, size, size);
+                    Color color = locationColor;
+                    if (color == null) {
+                        // Set this based on confidence
+                        int confidence = coordinate.getConfidence();
+                        int colorR = (confidence > 70?
+                                255:
+                                (int)(255.0/70.0*(70-confidence)));
+                        color = new Color(colorR, 255, 0);
+                    }
+                    g.setColor(color);
+                    g.fillOval(position.x - (int)(size/2), 
+                            position.y - (int)(size/2), size, size);
                     g.setColor(Color.BLACK);
-                    g.drawOval(position.x - size_h, position.y - size_h, size, size);
+                    g.drawOval(position.x - (int)(size/2),
+                            position.y - (int)(size/2), size, size);
                 }
                 
                 String label = coordinate.getLabel();
                 if (label != null && position != null) {
                     g.setColor(new Color(0,0,0,150));
-                    g.fillRect(position.x - size_h - 5, position.y - size_h*3 + 2, 
-                            (int)(size*label.length()/2.65), size + 2);
+                    g.fillRect(position.x - 9, position.y - 22, 
+                            (int)(label.length() * 6), 18);
                     g.setColor(Color.WHITE);
-                    g.drawString(label, position.x - size_h, position.y - size_h);
+                    g.drawString(label, position.x - 7, position.y - 7);
                 }
             }
         }

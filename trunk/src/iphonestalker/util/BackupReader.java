@@ -66,12 +66,48 @@ public class BackupReader {
                                 errorReason = "Could not load JDBC class";
                                 return errorReason;
                             }
+
+                            // Connect to the DB
                             Connection connection = DriverManager.getConnection("jdbc:sqlite:" + folder
                                     + FILE_SEPARATOR + mbdxData.fileId);
-
                             Statement statement = connection.createStatement();
-                            ResultSet rs = statement.executeQuery("SELECT Timestamp, Latitude, Longitude, "
-                                    + "HorizontalAccuracy, Confidence FROM CellLocation");
+                            ResultSet rs = null;
+                                                        
+                            int cdmaCellLocations = 0;
+                            int cellLocations = 0;
+                            boolean exception = false;
+                            try {
+                                // Get the list of CellLocations (AT&T)
+                                rs = statement.executeQuery("SELECT COUNT(*) FROM CellLocation");
+                                if (rs.next()) {
+                                    cellLocations = Integer.parseInt(rs.getString("COUNT(*)"));
+                                }
+                            } catch (SQLException e) { 
+                                exception = true;
+                            }
+
+                            try {
+                                // Get the list of CellLocations (Verizon)
+                                rs = statement.executeQuery("SELECT COUNT(*) FROM CdmaCellLocation");
+                                if (rs.next()) {
+                                    cdmaCellLocations = Integer.parseInt(rs.getString("COUNT(*)"));
+                                }
+                            } catch (SQLException e) {
+                                if (exception) {
+                                    // Looks like both values can't be retrieved
+                                    throw(e);
+                                }
+                            }
+                            
+                            if (cellLocations > cdmaCellLocations) {
+                                // Get AT&T data
+                                rs = statement.executeQuery("SELECT Timestamp, Latitude, Longitude, "
+                                        + "HorizontalAccuracy, Confidence FROM CellLocation");
+                            } else {
+                                // Get Verizon data
+                                rs = statement.executeQuery("SELECT Timestamp, Latitude, Longitude, " +
+                                    "HorizontalAccuracy, Confidence FROM CdmaCellLocation");
+                            }
 
                             Calendar cal = Calendar.getInstance();
                             SimpleDateFormat sdf = new SimpleDateFormat("MMMMMMM dd, yyyy z");
@@ -87,10 +123,10 @@ public class BackupReader {
                             while (rs.next()) {
 
                                 int confidence = Integer.parseInt(rs.getString("Confidence"));
-                                /*if (confidence == 0) {
+                                if (confidence == 0) {
                                     // skip
                                     continue;
-                                }*/
+                                }
                                 double iPhoneTimestamp = Double.parseDouble(rs.getString("Timestamp")) * 1000.0;
                                 long timestamp = startTimestamp + (long) iPhoneTimestamp;
                                 double latitude = Double.parseDouble(rs.getString("Latitude"));
@@ -105,7 +141,7 @@ public class BackupReader {
                             rs.close();
                             connection.close();
                         } catch (SQLException ex) {
-                            Logger.getLogger(BackupReader.class.getName()).log(Level.SEVERE, null, ex);
+                            errorReason = "OVERRIDE Could not execute SQL operation: " + ex;
                         }
                     } else {
                         errorReason = "Could not locate MBDXData via offset: " + mbdbData.startOffset;

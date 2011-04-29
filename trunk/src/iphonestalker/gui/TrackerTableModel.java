@@ -60,8 +60,12 @@ public class TrackerTableModel extends AbstractTableModel {
             returnVal = iPhoneData.getNumberOfLocations(day);
         } else if (column == 3) {
             
-            returnVal = sdfTime.format(iPhoneData.getStartDate(day)) + 
-                            " to " + sdfTime.format(iPhoneData.getEndDate(day));
+            String startTime = sdfTime.format(iPhoneData.getStartDate(day));
+            String endTime = sdfTime.format(iPhoneData.getEndDate(day));
+            
+            returnVal = (startTime.equals(endTime)?
+                    startTime:
+                    startTime + " to " + endTime);
             
         } else {
             returnVal = "Error";
