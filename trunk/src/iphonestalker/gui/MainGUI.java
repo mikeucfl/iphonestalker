@@ -22,10 +22,12 @@ import iphonestalker.gui.interfaces.MapRoute;
 import iphonestalker.util.BackupReader;
 import iphonestalker.util.FindMyIPhoneReader;
 import iphonestalker.util.io.InfoReader;
+import iphonestalker.util.io.VersionCheck;
 import java.awt.BorderLayout;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.Container;
+import java.awt.Desktop;
 import java.awt.Dimension;
 import java.awt.GridBagConstraints;
 import java.awt.GridBagLayout;
@@ -36,6 +38,9 @@ import java.awt.event.KeyEvent;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
 import java.io.File;
+import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -198,6 +203,40 @@ public class MainGUI extends JFrame implements ActionListener {
         pack();
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setVisible(true);
+
+        if (VersionCheck.getLatestVersion() != null) {
+            int reply = JOptionPane.showConfirmDialog(null,
+                    "iPhoneStalker is out of date!\n"
+                    + "Would you like to visit the iPhoneStalker homepage?",
+                    "New Version!",
+                    JOptionPane.YES_NO_OPTION);
+
+            if (reply == JOptionPane.YES_OPTION) {
+                if (!Desktop.isDesktopSupported()) {
+                    JOptionPane.showMessageDialog(null, "Unable to open browser.\n"
+                            + "Please visit http://iphonestalker.googlecode.com");
+                } else {
+                    Desktop desktop = Desktop.getDesktop();
+                    if (desktop.isSupported(Desktop.Action.BROWSE)) {
+                        try {
+                            desktop.browse(new URI("http://iphonestalker.googlecode.com"));
+
+                        } catch (IOException ex) {
+                            logger.log(Level.SEVERE, null, ex);
+                            JOptionPane.showMessageDialog(null, "Unable to open browser.\n"
+                                    + "Please visit http://iphonestalker.googlecode.com");
+                        } catch (URISyntaxException ex) {
+                            logger.log(Level.SEVERE, null, ex);
+                            JOptionPane.showMessageDialog(null, "Unable to open browser.\n"
+                                    + "Please visit http://iphonestalker.googlecode.com");
+                        }
+                    } else {
+                        JOptionPane.showMessageDialog(null, "Unable to open browser.\n"
+                                + "Please visit http://iphonestalker.googlecode.com");
+                    }
+                }
+            }
+        }
 
         initialized = true;
         return initialized;
