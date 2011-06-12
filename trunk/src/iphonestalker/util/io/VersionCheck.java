@@ -36,7 +36,7 @@ import org.apache.http.params.HttpParams;
  */
 public class VersionCheck {
 
-    private static final String CURRENT_VERSION = "04292011";
+    private static final String CURRENT_VERSION = "06122011";
     private static final Logger logger = Logger.getLogger(VersionCheck.class.getName());
 
     public static String getLatestVersion() {
