@@ -1,10 +1,22 @@
 /*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ *  This file is a part of iPhoneStalker.
+ * 
+ *  iPhoneStalker is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 package iphonestalker.gui;
 
-import iphonestalker.data.MyCoordinate;
+import iphonestalker.data.IPhoneLocation;
 import iphonestalker.gui.interfaces.MapRoute;
 import java.awt.Graphics;
 import java.awt.Point;
@@ -150,17 +162,20 @@ public class MyJMapViewer extends JMapViewer {
      * Sets the displayed map pane and zoom level so that all routes are 
      * visible.
      */
-    public void setDisplayToFitMapRoutes() {
-        if (mapRouteList == null || mapRouteList.isEmpty())
+    public void setDisplayToFitMapRoutes(List<MapRoute> displayMapRouteList) {
+        if (displayMapRouteList == null) {
+            displayMapRouteList = mapRouteList;
+        }
+        if (displayMapRouteList == null || displayMapRouteList.isEmpty())
             return;
         int x_min = Integer.MAX_VALUE;
         int y_min = Integer.MAX_VALUE;
         int x_max = Integer.MIN_VALUE;
         int y_max = Integer.MIN_VALUE;
         int mapZoomMax = tileController.getTileSource().getMaxZoom();
-        for (MapRoute mapRoute : mapRouteList) {
-            List<MyCoordinate> coordinates = mapRoute.getCoordinates();
-            for (MyCoordinate coordinate : coordinates) {
+        for (MapRoute mapRoute : displayMapRouteList) {
+            List<IPhoneLocation> coordinates = mapRoute.getCoordinates();
+            for (IPhoneLocation coordinate : coordinates) {
                 int x = OsmMercator.LonToX(coordinate.getLon(), mapZoomMax);
                 int y = OsmMercator.LatToY(coordinate.getLat(), mapZoomMax);
                 x_max = Math.max(x_max, x);
@@ -171,14 +186,10 @@ public class MyJMapViewer extends JMapViewer {
         }
         int height = Math.max(0, getHeight());
         int width = Math.max(0, getWidth());
-        // System.out.println(x_min + " < x < " + x_max);
-        // System.out.println(y_min + " < y < " + y_max);
-        // System.out.println("tiles: " + width + " " + height);
         int newZoom = mapZoomMax;
         int x = x_max - x_min;
         int y = y_max - y_min;
         while (x > width || y > height) {
-            // System.out.println("zoom: " + zoom + " -> " + x + " " + y);
             newZoom--;
             x >>= 1;
             y >>= 1;
