@@ -1,6 +1,18 @@
 /*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ *  This file is a part of iPhoneStalker.
+ * 
+ *  iPhoneStalker is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 package iphonestalker.data;
 
@@ -26,63 +38,54 @@ import javax.swing.JOptionPane;
  *
  * @author MikeUCFL
  */
-public class IPhoneData {
+public class IPhoneRoute {
 
     private static final Logger logger =
-            Logger.getLogger(IPhoneData.class.getName());
+            Logger.getLogger(IPhoneRoute.class.getName());
     
     public String name = null;
     public Date lastBackupDate = null;
     private Map<String, ArrayList<IPhoneLocation>> locationMap = null;
     private List<String> days = null;
-    private static SimpleDateFormat sdfDay = new SimpleDateFormat("EEE MMM d yyyy");
-    private static SimpleDateFormat sdfTime = new SimpleDateFormat("h:mm a");
+    private boolean fmi = false;
+    
     private static SimpleDateFormat fullDateFormat = new SimpleDateFormat("EEE MMM dd yyyy h:mm:ss a");
 
-    public IPhoneData() {
+    public IPhoneRoute() {
         locationMap = new TreeMap<String, ArrayList<IPhoneLocation>>();
         days = new ArrayList<String>();
     }
 
-    public void addLocation(Date fulldate, double latitude, double longitude,
-            double horizontalAccuracy, int confidence) {
-
-        String day = sdfDay.format(fulldate);
-        String time = sdfTime.format(fulldate);
-
-        IPhoneLocation iPhoneLocation = new IPhoneLocation();
-        iPhoneLocation.fulldate = fulldate;
-        iPhoneLocation.day = day;
-        iPhoneLocation.time = time;
-        iPhoneLocation.latitude = latitude;
-        iPhoneLocation.longitude = longitude;
-        iPhoneLocation.horizontalAccuracy = horizontalAccuracy;
-        iPhoneLocation.confidence = confidence;
-        iPhoneLocation.hitCount = 1;
+    public void addLocation(IPhoneLocation newLocation) {
 
         // Override exact locations with better confidences
         boolean isUpdate = false;
-        ArrayList<IPhoneLocation> locations = locationMap.get(day);
+        ArrayList<IPhoneLocation> locations = locationMap.get(newLocation.getDay());
         
+        //TODO add a list of dates so we can do a start/end date? This would fix the
+        // numerous same location but diff date craps for findmyiphone. Also we'd have to
+        // display this properly on the label.. or wait what about looking at the total route for
+        // this info? that has everything anyways?
         if (locations != null) {
             for (IPhoneLocation location : locations) {
-                if (location.fulldate.equals(fulldate)) {
-                    if (confidence > location.confidence) {
-                        location.confidence = iPhoneLocation.confidence;
-                        location.latitude = iPhoneLocation.latitude;
-                        location.longitude = iPhoneLocation.longitude;
+                if (location.getFulldate().equals(newLocation.getFulldate())) {
+                    if (newLocation.getConfidence() > location.getConfidence()) {
+                        location.setConfidence(newLocation.getConfidence());
+                        location.setLat(newLocation.getLat());
+                        location.setLon(newLocation.getLon());
+                        location.incrementHitCount();
                     }
                     isUpdate = true;
                 }
             }
         } else {
             locations = new ArrayList<IPhoneLocation>();
-            locationMap.put(day, locations);
-            days.add(day);
+            locationMap.put(newLocation.getDay(), locations);
+            days.add(newLocation.getDay());
         }
 
         if (!isUpdate) {
-            locations.add(iPhoneLocation);
+            locations.add(newLocation);
         }
     }
 
@@ -126,22 +129,30 @@ public class IPhoneData {
         return iPhoneLocations;
     }
     
-    public ArrayList<IPhoneLocation> getIphoneLocations(String day) {
+    public ArrayList<IPhoneLocation> getIPhoneLocations(String day) {
         return locationMap.get(day);
     }
     
     public Date getStartDate(String day) {
         ArrayList<IPhoneLocation> locations = locationMap.get(day);
-        return (locations != null ? locations.get(0).fulldate : null);
+        return (locations != null ? locations.get(0).getFulldate() : null);
     }
 
     public Date getEndDate(String day) {
         ArrayList<IPhoneLocation> locations = locationMap.get(day);
-        return (locations != null ? locations.get(locations.size() - 1).fulldate : null);
+        return (locations != null ? locations.get(locations.size() - 1).getFulldate() : null);
     }
 
     public String getLastBackupDate() {
         return fullDateFormat.format(lastBackupDate);
+    }
+
+    public boolean isFMI() {
+        return fmi;
+    }
+
+    public void setFMI(boolean fmi) {
+        this.fmi = fmi;
     }
     
     public void exportToFile(ArrayList<String> days) {
@@ -231,15 +242,15 @@ public class IPhoneData {
                     IPhoneLocation location = locations.get(i);
                     
                     bufferedWriter.write("  <Placemark>\n");
-                    bufferedWriter.write("    <name>" + location.getFullDate() + " [" 
+                    bufferedWriter.write("    <name>" + location.getFullDateString() + " [" 
                             + (i+1) + "/" + locations.size() + "]</name>\n");
                     bufferedWriter.write("    <styleUrl>#" + style + "</styleUrl>\n");
                     bufferedWriter.write("    <Point>\n");
                     bufferedWriter.write("      <coordinates>" + location.toString() + "</coordinates>\n");
                     bufferedWriter.write("    </Point>\n");
                     bufferedWriter.write("    <LookAt>\n");
-                    bufferedWriter.write("      <longitude>" + location.longitude + "</longitude>\n");
-                    bufferedWriter.write("      <latitude>" + location.latitude + "</latitude>\n");
+                    bufferedWriter.write("      <longitude>" + location.getLon() + "</longitude>\n");
+                    bufferedWriter.write("      <latitude>" + location.getLat() + "</latitude>\n");
                     bufferedWriter.write("      <range>100.000000</range>\n");
                     bufferedWriter.write("      <tilt>45.000000</tilt>\n");
                     bufferedWriter.write("    </LookAt>\n");
@@ -301,24 +312,4 @@ public class IPhoneData {
         return name + " @ " + getLastBackupDate();
     }
 
-    public class IPhoneLocation {
-
-        public Date fulldate = null;
-        public String day = null;
-        public String time = null;
-        public double latitude = -1.0;
-        public double longitude = -1.0;
-        public double horizontalAccuracy = -1.0;
-        public int confidence = -1;
-        public int hitCount = 0;
-        
-        public String getFullDate() {
-            return fullDateFormat.format(fulldate);
-        }
-        
-        @Override
-        public String toString() {
-            return longitude + "," + latitude + ",0.0";
-        }
-    }
 }

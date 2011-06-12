@@ -1,13 +1,26 @@
 /*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ *  This file is a part of iPhoneStalker.
+ * 
+ *  iPhoneStalker is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 package iphonestalker.gui;
 
-import iphonestalker.data.MyCoordinate;
+import iphonestalker.data.IPhoneLocation;
 import iphonestalker.gui.interfaces.MapRoute;
 import java.awt.BasicStroke;
 import java.awt.Color;
+import java.awt.FontMetrics;
 import java.awt.Graphics;
 import java.awt.Graphics2D;
 import java.awt.Point;
@@ -25,23 +38,27 @@ public class MyMapRoute implements MapRoute {
 
     private Color locationColor = null;
     private Color routeColor = null;
-    private List<MyCoordinate> coordinates = null;
+    private List<IPhoneLocation> coordinates = null;
     
-    public MyMapRoute(Color locationColor, Color routeColor, List<MyCoordinate> coordinates) {
+    public MyMapRoute(Color locationColor, Color routeColor, List<IPhoneLocation> coordinates) {
         this.locationColor = locationColor;
         this.routeColor = routeColor;
         this.coordinates = coordinates;
     }
     @Override
-    public void setCoordinates(List<MyCoordinate> coordinates) {
+    public void setCoordinates(List<IPhoneLocation> coordinates) {
         this.coordinates = coordinates;
     }
     
     @Override
-    public List<MyCoordinate> getCoordinates() {
-        return new ArrayList<MyCoordinate>(coordinates);
+    public List<IPhoneLocation> getCoordinates() {
+        return new ArrayList<IPhoneLocation>(coordinates);
     }
 
+    public IPhoneLocation getLastCoordinate() {
+        return coordinates.get(coordinates.size()-1);
+    }
+    
     private void paintArrow(Graphics g, int x0, int y0, int x1, int y1){
 	int deltaX = x1 - x0;
 	int deltaY = y1 - y0;
@@ -90,8 +107,8 @@ public class MyMapRoute implements MapRoute {
         
         // Draw the routes first
         if (coordinates != null) {
-            MyCoordinate lastCoordinate = null;
-            for (MyCoordinate coordinate : coordinates) {
+            IPhoneLocation lastCoordinate = null;
+            for (IPhoneLocation coordinate : coordinates) {
                 
                 // Draw the route if previous exists
                 if (lastCoordinate != null) {
@@ -115,7 +132,9 @@ public class MyMapRoute implements MapRoute {
             }
             
             // Now draw the points and info text
-            for (MyCoordinate coordinate : coordinates) {
+            for (int i = 0;i < coordinates.size();i++) {
+                IPhoneLocation coordinate = coordinates.get(i);
+
                 // Draw the point
                 int size = 14;
                 Point position = mapViewer.getMapPosition(coordinate.getLat(),
@@ -138,11 +157,14 @@ public class MyMapRoute implements MapRoute {
                             position.y - (int)(size/2), size, size);
                 }
                 
-                String label = coordinate.getLabel();
+                String label = coordinate.getLabel((i+1),coordinates.size());
                 if (label != null && position != null) {
                     g.setColor(new Color(0,0,0,150));
-                    g.fillRect(position.x - 9, position.y - 22, 
-                            (int)(label.length() * 6), 18);
+                    FontMetrics fm = mapViewer.getFontMetrics(g.getFont());
+                    int width_offset = 8;
+                    int width = fm.stringWidth(label);
+                    g.fillRect(position.x - 7 - width_offset/2, position.y - 22, 
+                            width + width_offset, 18);
                     g.setColor(Color.WHITE);
                     g.drawString(label, position.x - 7, position.y - 7);
                 }

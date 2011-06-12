@@ -1,10 +1,23 @@
 /*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ *  This file is a part of iPhoneStalker.
+ * 
+ *  iPhoneStalker is free software: you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License as published by
+ *  the Free Software Foundation, either version 3 of the License, or
+ *  (at your option) any later version.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program.  If not, see <http://www.gnu.org/licenses/>.
  */
 package iphonestalker.util;
 
-import iphonestalker.data.IPhoneData;
+import iphonestalker.data.IPhoneRoute;
+import iphonestalker.data.IPhoneLocation;
 import iphonestalker.util.io.MBDBReader;
 import iphonestalker.util.io.MBDBReader.MBDBData;
 import iphonestalker.util.io.MBDXReader;
@@ -36,7 +49,7 @@ public class BackupReader {
         
     }
     
-    public String processFolder (String folder, IPhoneData iPhoneData) {
+    public String processFolder (String folder, IPhoneRoute iPhoneData) {
         
         String errorReason = null;
         
@@ -133,10 +146,14 @@ public class BackupReader {
                                 double longitude = Double.parseDouble(rs.getString("Longitude"));
                                 double horizontalAccuracy = Double.parseDouble(rs.getString("HorizontalAccuracy"));
                                 cal.setTimeInMillis(timestamp);
-                                iPhoneData.addLocation(cal.getTime(), latitude, longitude,
-                                        horizontalAccuracy, confidence);
+                                
+                                IPhoneLocation iPhoneLocation = new IPhoneLocation(latitude, longitude);
+                                iPhoneLocation.setFulldate(cal.getTime());
+                                iPhoneLocation.setHorizontalAccuracy(horizontalAccuracy);
+                                iPhoneLocation.setConfidence(confidence);
+                                iPhoneLocation.setHitCount(1);
 
-
+                                iPhoneData.addLocation(iPhoneLocation);
                             }
                             rs.close();
                             connection.close();
