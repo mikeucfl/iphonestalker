@@ -1,7 +1,7 @@
 # iPhoneStalker
 This is a simple Java application which lists the locations stored in your local iPhone backup files, or where it currently is at by find my iPhone.
 
-http://iphonestalker.googlecode.com/svn/wiki/images/iPhoneStalker.png
+![Screenshot](https://raw.githubusercontent.com/mikeucfl/iphonestalker/master/images/iPhoneStalker.png)
 
 ## Features
   * Find my iPhone tracking.
